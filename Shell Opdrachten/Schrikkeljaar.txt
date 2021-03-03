@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+year=$1
+
+if [ $[$year % 400] -eq "0" ]; then
+  echo "Dit is een schrikkeljaar. Februari heeft 29 dagen."
+
+elif [ $[$year % 4] -eq 0 ]; then
+        if [ $[$year % 100] -ne 0 ]; then
+          echo "Dit is een schrikkeljaar. Februari heeft 29 dagen."
+        else
+          echo "Dit is een geen schrikkeljaar. Februari heeft 28 dagen."
+        fi
+else
+  echo "Dit is een geen schrikkeljaar. Februari heeft 28 dagen."
+fi

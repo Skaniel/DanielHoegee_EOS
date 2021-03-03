@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+echo "wat is je naam"
+read naam
+if [ -z "$naam" ]; then
+echo "geen naam gegeven whoami lezen"
+naam=$(whoami)
+fi
+while true; do
+read -s -p "Wachtwoord: " password1
+echo
+read -s -p "Herhaal wachtwoord: " password2
+echo
+[ "$password1" = "$password2" ] && [ ${#password1} -gt 7 ] && break
+done
+echo -n "$naam	" >> $1
+echo -n "$password1" | md5sum >> $1
+

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+mkdir Afbeeldingen
+cd $1
+for file in $1; do
+mv *.jpg *.png ../Afbeeldingen 
+done 
