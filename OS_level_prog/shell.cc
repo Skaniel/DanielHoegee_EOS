@@ -1,0 +1,138 @@
+#include <iostream>
+#include <cstring>
+#include <unistd.h>  // syscall()
+#include <syscall.h> // SysCall nummers
+#include <fcntl.h>   // O_RDONLY
+#include <vector>
+
+using namespace std;
+
+int main();
+void new_file();
+void list();
+void find();
+void seek();
+void src();
+
+
+int main(){
+    string input;
+    string prompt;
+
+    int fd = syscall(SYS_open, "prompt_text.txt", O_RDONLY, 0755);
+    char prompt_file[20];
+    while(syscall(SYS_read, fd, prompt_file, 20)){
+        prompt = prompt_file;
+    }
+
+    while(true)
+    { cout << prompt;                   // Print het prompt
+        getline(cin, input);         // Lees een regel
+        if (input == "new_file") new_file();   // Kies de functie
+        else if (input == "ls") list();        //   op basis van
+        else if (input == "src") src();        //   de invoer
+        else if (input == "find") find();
+        else if (input == "seek") seek();
+        else if (input == "exit") return 0;
+        else if (input == "quit") return 0;
+        else if (input == "error") return 1;
+
+        if (cin.eof()) return 0; } }      // EOF is een exit
+
+void new_file() {
+    string bestandsnaam;
+    cout << "Geef de bestandsnaam: ";
+    cin >> bestandsnaam;
+    cout << "Geef de inhoud van het bestand: " << endl;
+
+    const char* cstring_bestandnaam = bestandsnaam.c_str();
+    int file_discript = syscall(SYS_creat, cstring_bestandnaam, 0775);
+
+    cin.ignore(1); //New line in cin?
+    string tmp;
+    string tekst;
+    while (getline(cin, tmp)){
+        if(tmp == "<EOF>"){
+            break;
+        }
+        tekst += tmp + '\n';
+    }
+    int size = tekst.length();
+    char line[size] ;
+    strcpy(line, tekst.c_str());
+    syscall(SYS_write, file_discript, line, size);
+    syscall(SYS_close, file_discript);
+}
+
+void list(){
+    const char *argv[] = { "/bin/ls", "-l", "-a", nullptr};
+    pid_t pid = syscall(SYS_fork);
+
+    if(pid == 0) {          //child
+        syscall(SYS_execve, argv[0], argv, NULL);
+    }
+    else if (pid > 0){      //parent
+        syscall(SYS_wait4, pid, 0, 0, 0);
+    }
+}
+
+void find() {
+    string str1;
+    cout << "Geef een string: ";
+    cin >> str1;
+
+    const char *argv0[] = {"/usr/bin/find", ".", nullptr};
+    const char *argv1[] = {"/bin/grep", str1.c_str(), nullptr};
+
+    int fd[2];
+    syscall(SYS_pipe, &fd);
+    int pid = syscall(SYS_fork);
+
+    if (pid == 0) {
+        syscall(SYS_close, fd[0]);
+        syscall(SYS_dup2, fd[1], 1);
+        syscall(SYS_execve, argv0[0], argv0, NULL);
+    }
+    else if (pid > 0)
+    {
+        int pid1 = syscall(SYS_fork);
+        if (pid1 ==0){
+            syscall(SYS_close, fd[1]);
+            syscall(SYS_dup2, fd[0], 0);
+            syscall(SYS_execve, argv1[0], argv1, NULL);
+        }
+        else if(pid1 > 0){
+            syscall(SYS_close, fd[0]);
+            syscall(SYS_close, fd[1]);
+        }
+        syscall(SYS_wait4, pid, NULL, NULL, NULL);
+        syscall(SYS_wait4, pid1, NULL, NULL, NULL);
+    }
+    cin.ignore(1); //New line in cin?
+}
+
+
+void seek(){
+    int fd_seek = syscall(SYS_creat, "seek", 0775);
+    int fd_loop = syscall(SYS_creat, "loop", 0775);
+    //SEEK
+    syscall(SYS_write, fd_seek, "x", 1);
+    syscall(SYS_lseek, fd_seek, 5000000, SEEK_CUR);
+    syscall(SYS_write, fd_seek, "x", 1);
+    syscall(SYS_close, fd_seek);
+
+    //LOOP
+    syscall(SYS_write, fd_loop, "x", 1);
+    for (unsigned int i = 0; i < 5000000; ++i) {
+        syscall(SYS_write, fd_loop, "\0", 1);
+    }
+    syscall(SYS_write, fd_loop, "x", 1);
+    syscall(SYS_close, fd_loop);
+}
+
+void src() // Voorbeeld: Gebruikt SYS_open en SYS_read om de source van de shell (shell.cc) te printen.
+{ int fd = syscall(SYS_open, "shell.cc", O_RDONLY, 0755); // Gebruik de SYS_open call om een bestand te openen.
+    char byte[1];                                           // 0755 zorgt dat het bestand de juiste rechten krijgt (leesbaar is).
+    while(syscall(SYS_read, fd, byte, 1))                   // Blijf SYS_read herhalen tot het bestand geheel gelezen is,
+        cout << byte;                                   //   zet de gelezen byte in "byte" zodat deze geschreven kan worden.
+}
